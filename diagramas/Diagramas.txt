@@ -1,0 +1,88 @@
+Estos diagramas se pueden visualizar en la pagina de mermaid.live.
+
+(Diagrama de arquitectura)
+graph TD
+    %% Estilos de los nodos
+    classDef frontend fill:#478cbf,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef backend fill:#059669,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef database fill:#ea580c,stroke:#fff,stroke-width:2px,color:#fff;
+
+    subgraph Capa_Cliente ["Capa de Presentación (Frontend)"]
+        A[🎮 Godot Engine<br/>Cliente del Juego]:::frontend
+    end
+
+    subgraph Capa_Nube ["Infraestructura Cloud (SaaS / PaaS)"]
+        subgraph Servidor_Render ["Alojamiento: Render"]
+            B[🌐 API REST<br/>FastAPI / Python]:::backend
+            C[⚙️ Capa de Servicios<br/>Lógica de Negocio]:::backend
+        end
+        
+        subgraph Servidor_BaseDatos ["Alojamiento: NeonDB Serverless"]
+            D[(🗄️ PostgreSQL<br/>Base de Datos Relacional)]:::database
+        end
+    end
+
+    %% Flujo de datos
+    A -- "1. Petición HTTP (JSON)<br/>🔒 Header: Bearer JWT" --> B
+    B -- "2. Validación Estricta<br/>(Pydantic Schemas)" --> C
+    C -- "3. Transacción ACID<br/>(SQLAlchemy)" --> D
+    D -- "4. Confirmación de Datos" --> C
+    C -- "5. Respuesta HTTP 200 OK<br/>(JSON Formateado)" --> A
+
+------------------------------------------------------------------------
+(Diagrama de secuencia)
+sequenceDiagram
+    autonumber
+    actor Jugador as 🎮 Godot (Cliente)
+    participant API as 🌐 FastAPI (Rutas)
+    participant Service as ⚙️ Lógica (Servicios)
+    participant DB as [(🗄️ NeonDB)]
+
+    Jugador->>API: POST /alianzas/crear (JSON + JWT)
+    API->>API: Valida Token y Esquema Pydantic
+    API->>Service: Llama a crear_alianza(datos)
+    Service->>DB: Consulta: ¿Existe el nombre?
+    DB-->>Service: Respuesta: No existe
+    Service->>DB: Consulta: ¿Saldo suficiente?
+    DB-->>Service: Respuesta: Sí (Ej: 10,000 Minerales)
+    Service->>DB: Inicia Transacción ACID
+    Service->>DB: INSERT Alianza y MIEMBRO_ALIANZA (Líder)
+    DB-->>Service: Transacción Exitosa (Commit)
+    Service-->>API: Devuelve objeto Alianza
+    API-->>Jugador: HTTP 200 OK (Datos de la Alianza)
+------------------------------------------------------------------------
+(Diagrama de caso de uso)
+flowchart LR
+    %% Actores
+    A([👤 Jugador Sin Alianza])
+    B([🛡️ Miembro de Alianza])
+    C([👑 Líder de Alianza])
+
+    %% Casos de Uso
+    U1(Crear Nueva Alianza)
+    U2(Buscar y Unirse a Alianza)
+    U3(Depositar en Banco de Recursos)
+    U4(Participar en Minijuegos)
+    U5(Expulsar Miembro)
+    U6(Inscribir Alianza en Torneo)
+
+    %% Relaciones
+    A --> U1
+    A --> U2
+    
+    B --> U3
+    B --> U4
+    
+    C -.->|Hereda permisos de Miembro| B
+    C --> U5
+    C --> U6
+
+------------------------------------------------------------------------
+(Diagrama de estados)
+stateDiagram-v2
+    [*] --> Anunciado : Se crea el Torneo
+    Anunciado --> Inscripciones_Abiertas : Inicia periodo de registro
+    Inscripciones_Abiertas --> En_Curso : Llega la Fecha de Inicio
+    En_Curso --> Finalizado : Llega la Fecha de Fin
+    Finalizado --> Recompensas_Entregadas : Sistema reparte premios
+    Recompensas_Entregadas --> [*]
